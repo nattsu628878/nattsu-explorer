@@ -1,0 +1,19 @@
+# 依存関係
+node_modules/
+
+# ビルド・Astro 生成物（本番は GitHub Actions でビルド）
+dist/
+.astro/
+
+# 環境・シークレット
+.env
+.env.*
+
+# 写真の受け入れ場所（一時・git管理しない）
+import-inbox/
+
+# OS・エディタ
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo

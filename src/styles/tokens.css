@@ -1,0 +1,54 @@
+/*
+  デザイントークン。dev/tools/web-tools/tpl/tool-box-tpl.css のパレットを踏襲し、
+  nattsu-gallery / music-visualizer と配色を揃える。
+*/
+:root {
+  --accent: #628878;
+  --accent-hover: #4a6b5a;
+  --accent-dark: #4d6b5f;
+  --accent-light: #e8f0ec;
+  --accent-bg: rgba(98, 136, 120, 0.15);
+  --bg-primary: #f5f5f5;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e8eaed;
+  --bg-panel: #ffffff;
+  --border-color: #d1d5db;
+  --border-light: #e5e7eb;
+  --text-primary: #333;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+html.dark-mode {
+  --accent: #628878;
+  --accent-hover: #7aa08a;
+  --accent-light: #2a3d32;
+  --accent-dark: #628878;
+  --accent-bg: rgba(98, 136, 120, 0.2);
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #252525;
+  --bg-tertiary: #2d2d2d;
+  --bg-panel: #2a2a2a;
+  --border-color: #404040;
+  --border-light: #353535;
+  --text-primary: #f0f0f0;
+  --text-secondary: #b0b0b0;
+  --text-muted: #888888;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Segoe UI', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
