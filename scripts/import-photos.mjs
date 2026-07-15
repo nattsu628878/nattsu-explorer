@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // 写真の取り込みスクリプト。
-// Google Drive共有フォルダ（nattsu-hub-share/to-agent/）から写真を取得し、
+// Google Drive共有フォルダ（nattsu-hub-share/to-agent/nattsu-explorer/）から写真を取得し、
 // EXIF位置情報・撮影日時を読み、public/photos/ にwebp化して配置、
 // src/content/spots/ にコンテンツエントリを生成する。
-// 処理済みの元写真はDrive側のarchive/へ退避する。
+// 処理済みの元写真はDrive側のarchive/nattsu-explorer/へ退避する。
 //
 // 使い方: npm run import-photos
 //   ローカルの写真フォルダから直接取り込みたい場合: npm run import-photos -- --input ./some-dir
@@ -17,6 +17,8 @@ import exifr from 'exifr';
 const { parse: parseExif, gps: gpsExif } = exifr;
 
 const DRIVE_ROOT = 'gdrive:nattsu-hub-share';
+const DRIVE_INBOX = `${DRIVE_ROOT}/to-agent/nattsu-explorer`;
+const DRIVE_ARCHIVE = `${DRIVE_ROOT}/archive/nattsu-explorer`;
 const CACHE_DIR = './.assets-cache/import-inbox';
 const SUPPORTED = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
@@ -42,9 +44,9 @@ async function main() {
   const inputDir = input ?? CACHE_DIR;
 
   if (fromDrive) {
-    console.log(`Fetching photos from ${DRIVE_ROOT}/to-agent/ ...`);
+    console.log(`Fetching photos from ${DRIVE_INBOX}/ ...`);
     mkdirSync(CACHE_DIR, { recursive: true });
-    execFileSync('rclone', ['copy', `${DRIVE_ROOT}/to-agent/`, CACHE_DIR]);
+    execFileSync('rclone', ['copy', `${DRIVE_INBOX}/`, CACHE_DIR]);
   }
 
   const photoDir = join('public', 'photos');
@@ -94,7 +96,7 @@ async function main() {
     imported++;
 
     if (fromDrive) {
-      execFileSync('rclone', ['moveto', `${DRIVE_ROOT}/to-agent/${file}`, `${DRIVE_ROOT}/archive/${file}`]);
+      execFileSync('rclone', ['moveto', `${DRIVE_INBOX}/${file}`, `${DRIVE_ARCHIVE}/${file}`]);
     }
   }
 
