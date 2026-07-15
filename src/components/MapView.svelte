@@ -51,7 +51,7 @@
   onMount(() => {
     map = new maplibregl.Map({
       container: mapContainer,
-      style: 'https://tiles.openfreemap.org/styles/liberty',
+      style: 'https://tiles.openfreemap.org/styles/positron',
       center: [139.75, 35.68],
       zoom: 10
     });
@@ -124,5 +124,30 @@
   .map {
     flex: 1;
     min-height: 480px;
+  }
+
+  /* MapLibreが自前でDOMに挿入するUI（ポップアップ・コントロール）は
+     Svelteのスコープ外なので:globalで、tokens.cssの変数に合わせる */
+  :global(.maplibregl-popup-content) {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
+  }
+
+  :global(.maplibregl-popup-anchor-bottom .maplibregl-popup-tip) {
+    border-top-color: var(--bg-panel);
+  }
+
+  :global(.maplibregl-ctrl-group) {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+  }
+
+  :global(.maplibregl-ctrl-group button) {
+    background: transparent;
+  }
+
+  :global(.maplibregl-ctrl-icon) {
+    filter: var(--map-ctrl-icon-filter, none);
   }
 </style>
