@@ -1,14 +1,14 @@
 # nattsu-explorer
 
-都市巡りの記録アプリ（MVP）。訪れた場所を地図上のピンで振り返る。都市ごとにセレクタで切り替える単一アプリ。
+地図上の写真ビューワー。GPS付き写真を放り込むと、撮影地点にピンとして配置される。都市や旅行単位の区切りは無く、日本全体を1枚の地図で管理する。
 
 Live site（デプロイ後）: https://nattsu628878.github.io/nattsu-explorer
 
 ## スタック
 - Astro + Svelte（`@astrojs/svelte`）— 静的サイト、adapterなし
 - 地図: MapLibre GL JS + OpenFreeMap（APIキー不要のベクタタイル）
-- コンテンツ: Astro Content Collections（`src/content/spots/<city>/*.md`）
-- 配色: `dev/tools/web-tools/tpl/tool-box-tpl.css` のパレットを`src/styles/tokens.css`に踏襲（nattsu-gallery / music-visualizerと共通）
+- コンテンツ: Astro Content Collections（`src/content/spots/*.md`、フラット構造）
+- 配色: `dev/tools/web-tools/tpl/tool-box-tpl.css` のパレットを`src/styles/tokens.css`に踏襲（nattsu-gallery / music-visualizerと共通）。ヘッダー右上のボタンでライト/ダーク切り替え可（localStorageに保存）
 
 ## 開発
 
@@ -17,34 +17,36 @@ npm install
 npm run dev
 ```
 
-## コンテンツの追加
+## コンテンツの形式
 
-`src/content/spots/<city>/<slug>.md` にfrontmatterで追加:
+`src/content/spots/<slug>.md`（1写真＝1ファイル）:
 
 ```yaml
 ---
-city: tokyo
-name: 訪れた場所の名前
 lat: 35.0000
 lng: 139.0000
 date: 2026-07-16
-photos: ["/nattsu-explorer/photos/tokyo/xxx.webp"]
-notes: "メモ"
+photo: "/nattsu-explorer/photos/xxx.webp"
+notes: "メモ（任意）"
 ---
 ```
 
-新しい都市を追加する場合は `src/content/spots/<city>/` ディレクトリを作るだけでよい（都市セレクタは自動的に増える）。
+通常は手で書かず、下記の取り込みスクリプトが生成する。
 
-## 写真の取り込み（旅行後、家で実行）
+## 写真の取り込み
 
-1. 撮った写真を `import-inbox/`（git管理外）に集める。HEICは事前に `sips`/`ffmpeg` 等でjpgに変換しておく。
+写真はGoogle Driveの共有フォルダ（`nattsu-hub-share/to-agent/`）経由で渡す。
+
+1. GPS付き写真（HEICは事前に `sips`/`ffmpeg` 等でjpgに変換）を Google Drive の `nattsu-hub-share/to-agent/` に置く。
 2. 実行:
 
 ```bash
-npm run import-photos -- --city tokyo
+npm run import-photos
 ```
 
-EXIFのGPS・撮影日時を読み、`cwebp`（要インストール: `brew install webp`）でwebp化して`public/photos/<city>/`に配置、`src/content/spots/<city>/`にエントリを生成する。GPSが無い写真はスキップされる。`name`と`notes`は生成後に手で埋める。
+`rclone`で`to-agent/`から取得 →EXIFのGPS・撮影日時を読み取り→`cwebp`（要インストール: Macは`brew install webp`、Archは`pacman -S libwebp-utils`）でwebp化して`public/photos/`に配置→`src/content/spots/`にエントリを生成、という流れを自動で行う。GPSが無い写真はスキップされ、Drive上のファイルもそのまま残る。取り込みに成功した写真の元ファイルはDrive側の`archive/`へ自動で退避される。
+
+ローカルのフォルダから直接取り込みたい場合は `npm run import-photos -- --input ./some-dir` でも可。
 
 3. 確認して commit/push。
 

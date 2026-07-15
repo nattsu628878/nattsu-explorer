@@ -21,9 +21,9 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-/* トグルボタンは今は無いので、OSのダークモード設定にそのまま追従させる */
+/* トグル未操作時はOSのダークモード設定に追従。data-theme属性がある場合はそちらを優先する。 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --accent: #628878;
     --accent-hover: #7aa08a;
     --accent-light: #2a3d32;
@@ -43,6 +43,26 @@
     /* MapLibreのコントロールアイコンは黒固定のSVGなので、ダークモードでは反転させる */
     --map-ctrl-icon-filter: invert(1);
   }
+}
+
+:root[data-theme='dark'] {
+  --accent: #628878;
+  --accent-hover: #7aa08a;
+  --accent-light: #2a3d32;
+  --accent-dark: #628878;
+  --accent-bg: rgba(98, 136, 120, 0.2);
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #252525;
+  --bg-tertiary: #2d2d2d;
+  --bg-panel: #2a2a2a;
+  --border-color: #404040;
+  --border-light: #353535;
+  --text-primary: #f0f0f0;
+  --text-secondary: #b0b0b0;
+  --text-muted: #888888;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --map-ctrl-icon-filter: invert(1);
 }
 
 * {

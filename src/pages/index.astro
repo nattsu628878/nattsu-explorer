@@ -1,17 +1,16 @@
 ---
 import { getCollection } from 'astro:content';
 import MapView from '../components/MapView.svelte';
+import ThemeToggle from '../components/ThemeToggle.svelte';
 import '../styles/tokens.css';
 
 const entries = await getCollection('spots');
 const spots = entries.map((e) => ({
   slug: e.slug,
-  city: e.data.city,
-  name: e.data.name,
   lat: e.data.lat,
   lng: e.data.lng,
   date: e.data.date.toISOString().slice(0, 10),
-  photos: e.data.photos,
+  photo: e.data.photo,
   notes: e.data.notes ?? ''
 }));
 ---
@@ -22,6 +21,12 @@ const spots = entries.map((e) => ({
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nattsu-explorer</title>
+    <script is:inline>
+      (function () {
+        var saved = localStorage.getItem('theme');
+        if (saved) document.documentElement.setAttribute('data-theme', saved);
+      })();
+    </script>
     <style>
       html, body, #app {
         height: 100%;
@@ -33,6 +38,10 @@ const spots = entries.map((e) => ({
         padding: 0.6rem 1rem;
         background: var(--bg-secondary);
         border-bottom: 2px solid var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
       }
       header.app-header h1 {
         margin: 0;
@@ -54,6 +63,7 @@ const spots = entries.map((e) => ({
     <div id="app">
       <header class="app-header">
         <h1>nattsu-explorer</h1>
+        <ThemeToggle client:load />
       </header>
       <div id="map-root">
         <MapView spots={spots} client:load />
