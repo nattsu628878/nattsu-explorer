@@ -13,6 +13,10 @@
   let distancePx = null;
   let mousePos = null;
 
+  let prevActiveSlug = null;
+  let rafId = null;
+  let isDraggingMap = false;
+
   // ハーバーサイン公式による地球表面上の距離計算 (km)
   function getGeoDistanceKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -48,12 +52,13 @@
   }
 
   function updateNearestSpot(point) {
-    if (!spots.length || !map) return;
+    if (!spots.length || !map || isDraggingMap) return;
 
     let minPixelDist = Infinity;
     let closestSpot = null;
 
-    for (const spot of spots) {
+    for (let i = 0; i < spots.length; i++) {
+      const spot = spots[i];
       const proj = map.project([spot.lng, spot.lat]);
       const dx = point.x - proj.x;
       const dy = point.y - proj.y;
@@ -66,22 +71,28 @@
     }
 
     if (closestSpot) {
-      if (!activeSpot || activeSpot.slug !== closestSpot.slug) {
-        activeSpot = closestSpot;
+      const isNewSpot = !activeSpot || activeSpot.slug !== closestSpot.slug;
+      activeSpot = closestSpot;
+      distancePx = Math.round(minPixelDist);
+
+      if (isNewSpot) {
         updateMarkerStyles();
       }
-      distancePx = Math.round(minPixelDist);
     }
   }
 
+  // 全マーカーのDOMループを回避し、変更があった2要素のみを超高速更新
   function updateMarkerStyles() {
-    for (const [slug, { element }] of markerMap.entries()) {
-      if (activeSpot && activeSpot.slug === slug) {
-        element.classList.add('is-active');
-      } else {
-        element.classList.remove('is-active');
-      }
+    const currentSlug = activeSpot ? activeSpot.slug : null;
+    if (prevActiveSlug === currentSlug) return;
+
+    if (prevActiveSlug && markerMap.has(prevActiveSlug)) {
+      markerMap.get(prevActiveSlug).element.classList.remove('is-active');
     }
+    if (currentSlug && markerMap.has(currentSlug)) {
+      markerMap.get(currentSlug).element.classList.add('is-active');
+    }
+    prevActiveSlug = currentSlug;
   }
 
   function renderMarkers() {
@@ -99,7 +110,8 @@
       const el = marker.getElement();
       el.classList.add('spot-marker');
 
-      el.addEventListener('click', () => {
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
         activeSpot = spot;
         updateMarkerStyles();
       });
@@ -132,6 +144,13 @@
     }
   }
 
+  function scheduleNearestSpotUpdate(point) {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+      updateNearestSpot(point);
+    });
+  }
+
   onMount(() => {
     map = new maplibregl.Map({
       container: mapContainer,
@@ -145,30 +164,27 @@
       renderMarkers();
     });
 
-    map.on('mousemove', (e) => {
-      mousePos = e.point;
-      if (map && !map.isDragging()) {
-        updateNearestSpot(e.point);
-      }
-    });
-
-    map.on('move', () => {
-      if (map && !map.isDragging()) {
-        const targetPoint = mousePos || {
-          x: mapContainer.clientWidth / 2,
-          y: mapContainer.clientHeight / 2
-        };
-        updateNearestSpot(targetPoint);
-      }
+    map.on('dragstart', () => {
+      isDraggingMap = true;
     });
 
     map.on('dragend', () => {
-      if (map) {
-        const targetPoint = mousePos || {
-          x: mapContainer.clientWidth / 2,
-          y: mapContainer.clientHeight / 2
-        };
-        updateNearestSpot(targetPoint);
+      isDraggingMap = false;
+      if (mousePos) {
+        scheduleNearestSpotUpdate(mousePos);
+      }
+    });
+
+    map.on('mousemove', (e) => {
+      mousePos = e.point;
+      if (!isDraggingMap) {
+        scheduleNearestSpotUpdate(e.point);
+      }
+    });
+
+    map.on('moveend', () => {
+      if (!isDraggingMap && mousePos) {
+        scheduleNearestSpotUpdate(mousePos);
       }
     });
 
@@ -180,12 +196,13 @@
     }
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       resizeObserver.disconnect();
       map.remove();
     };
   });
 
-  $: cursorGeoDist = (activeSpot && mousePos && map)
+  $: cursorGeoDist = (activeSpot && mousePos && map && !isDraggingMap)
     ? getGeoDistanceKm(
         map.unproject(mousePos).lat,
         map.unproject(mousePos).lng,
