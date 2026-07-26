@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
+  import ThemeToggle from './ThemeToggle.svelte';
 
   /** @type {{ slug: string, lat: number, lng: number, date: string, photo: string, notes?: string }[]} */
   export let spots = [];
@@ -16,6 +17,39 @@
   let prevActiveSlug = null;
   let rafId = null;
   let isDraggingMap = false;
+
+  // 時系列ソート済みユニーク日付の生成
+  $: sortedDates = Array.from(
+    new Set(
+      spots
+        .map((s) => s.date)
+        .filter(Boolean)
+        .sort((a, b) => new Date(a) - new Date(b))
+    )
+  );
+
+  let sliderValue = 0;
+
+  $: maxSliderIndex = sortedDates.length > 0 ? sortedDates.length - 1 : 0;
+
+  $: currentCutoffDate = (sliderValue > 0 && sortedDates[sliderValue]) ? sortedDates[sliderValue] : null;
+
+  $: filteredSpots = spots.filter((s) => {
+    if (sliderValue === 0 || !currentCutoffDate) return true;
+    return s.date >= currentCutoffDate;
+  });
+
+  $: dateLabel = (() => {
+    if (sortedDates.length === 0) return '';
+    if (sliderValue === 0) return '全期間';
+    if (sliderValue === maxSliderIndex) return `最新 (${sortedDates[maxSliderIndex]})`;
+    return `${sortedDates[sliderValue]} 以降`;
+  })();
+
+  // filteredSpotsが変更されたらマーカーを同期
+  $: if (map && filteredSpots) {
+    syncMarkers();
+  }
 
   // ハーバーサイン公式による地球表面上の距離計算 (km)
   function getGeoDistanceKm(lat1, lon1, lat2, lon2) {
@@ -52,13 +86,13 @@
   }
 
   function updateNearestSpot(point) {
-    if (!spots.length || !map || isDraggingMap) return;
+    if (!filteredSpots.length || !map || isDraggingMap) return;
 
     let minPixelDist = Infinity;
     let closestSpot = null;
 
-    for (let i = 0; i < spots.length; i++) {
-      const spot = spots[i];
+    for (let i = 0; i < filteredSpots.length; i++) {
+      const spot = filteredSpots[i];
       const proj = map.project([spot.lng, spot.lat]);
       const dx = point.x - proj.x;
       const dy = point.y - proj.y;
@@ -78,10 +112,12 @@
       if (isNewSpot) {
         updateMarkerStyles();
       }
+    } else {
+      activeSpot = null;
+      distancePx = null;
     }
   }
 
-  // 全マーカーのDOMループを回避し、変更があった2要素のみを超高速更新
   function updateMarkerStyles() {
     const currentSlug = activeSpot ? activeSpot.slug : null;
     if (prevActiveSlug === currentSlug) return;
@@ -95,35 +131,69 @@
     prevActiveSlug = currentSlug;
   }
 
+  function syncMarkers() {
+    if (!map) return;
+
+    const filteredSlugs = new Set(filteredSpots.map((s) => s.slug));
+
+    // フィルタから外れたマーカーの削除
+    for (const [slug, { marker }] of markerMap.entries()) {
+      if (!filteredSlugs.has(slug)) {
+        marker.remove();
+        markerMap.delete(slug);
+      }
+    }
+
+    // 新規マーカーの追加
+    for (const spot of filteredSpots) {
+      if (!markerMap.has(spot.slug)) {
+        const marker = new maplibregl.Marker({ color: '#628878' })
+          .setLngLat([spot.lng, spot.lat])
+          .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml(spot)))
+          .addTo(map);
+
+        const el = marker.getElement();
+        el.classList.add('spot-marker');
+
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          activeSpot = spot;
+          updateMarkerStyles();
+        });
+
+        markerMap.set(spot.slug, { marker, element: el });
+      }
+    }
+
+    // アクティブスポットが絞り込みで消えた場合、最寄りスポットを更新
+    if (activeSpot && !filteredSlugs.has(activeSpot.slug)) {
+      activeSpot = null;
+      prevActiveSlug = null;
+      const targetPoint = mousePos || {
+        x: mapContainer ? mapContainer.clientWidth / 2 : 0,
+        y: mapContainer ? mapContainer.clientHeight / 2 : 0
+      };
+      updateNearestSpot(targetPoint);
+    } else {
+      updateMarkerStyles();
+    }
+  }
+
   function renderMarkers() {
     markerMap.forEach(({ marker }) => marker.remove());
     markerMap.clear();
 
-    if (spots.length === 0) return;
+    if (filteredSpots.length === 0) return;
 
-    for (const spot of spots) {
-      const marker = new maplibregl.Marker({ color: '#628878' })
-        .setLngLat([spot.lng, spot.lat])
-        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml(spot)))
-        .addTo(map);
+    syncMarkers();
 
-      const el = marker.getElement();
-      el.classList.add('spot-marker');
-
-      el.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        activeSpot = spot;
-        updateMarkerStyles();
-      });
-
-      markerMap.set(spot.slug, { marker, element: el });
+    if (spots.length > 0) {
+      const bounds = spots.reduce(
+        (b, s) => b.extend([s.lng, s.lat]),
+        new maplibregl.LngLatBounds([spots[0].lng, spots[0].lat], [spots[0].lng, spots[0].lat])
+      );
+      map.fitBounds(bounds, { padding: 64, maxZoom: 15, duration: 0 });
     }
-
-    const bounds = spots.reduce(
-      (b, s) => b.extend([s.lng, s.lat]),
-      new maplibregl.LngLatBounds([spots[0].lng, spots[0].lat], [spots[0].lng, spots[0].lat])
-    );
-    map.fitBounds(bounds, { padding: 64, maxZoom: 15, duration: 0 });
 
     setTimeout(() => {
       if (mapContainer && map) {
@@ -132,16 +202,6 @@
         updateNearestSpot(centerPoint);
       }
     }, 150);
-  }
-
-  function focusActiveSpot() {
-    if (activeSpot && map) {
-      map.flyTo({
-        center: [activeSpot.lng, activeSpot.lat],
-        zoom: Math.max(map.getZoom(), 12),
-        duration: 800
-      });
-    }
   }
 
   function scheduleNearestSpotUpdate(point) {
@@ -212,68 +272,190 @@
     : null;
 </script>
 
-<div class="explorer-layout">
-  <div class="map-pane">
-    <div class="map" bind:this={mapContainer}></div>
-  </div>
+<div class="app-container">
+  <header class="app-header">
+    <h1 class="header-title">nattsu-explorer</h1>
 
-  <aside class="side-pane">
-    {#if activeSpot}
-      <div class="spot-card">
-        <div class="card-header">
-          <div class="badge-group">
-            {#if distancePx !== null}
-              <span class="badge dist-badge">{distancePx}px</span>
-            {/if}
-            {#if cursorGeoDist !== null}
-              <span class="badge geo-badge">{formatDistance(cursorGeoDist)}</span>
-            {/if}
-          </div>
+    <div class="header-right">
+      {#if maxSliderIndex > 0}
+        <div class="timeline-control">
+          <span class="timeline-label">{dateLabel}</span>
+          <input
+            type="range"
+            min="0"
+            max={maxSliderIndex}
+            bind:value={sliderValue}
+            class="simple-range"
+          />
         </div>
+      {/if}
+      <ThemeToggle />
+    </div>
+  </header>
 
-        <div class="photo-wrapper">
-          <img src={activeSpot.photo} alt="Spot photo" class="spot-photo" />
-        </div>
+  <div class="explorer-layout">
+    <div class="map-pane">
+      <div class="map" bind:this={mapContainer}></div>
+    </div>
 
-        <div class="spot-meta">
-          <div class="meta-row date-row">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            <span class="date-text">{activeSpot.date}</span>
-          </div>
-
-          <div class="meta-row coords-row">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-            <span class="coords-text">{activeSpot.lat.toFixed(4)}, {activeSpot.lng.toFixed(4)}</span>
-          </div>
-
-          {#if activeSpot.notes}
-            <div class="notes-box">
-              <p>{activeSpot.notes}</p>
+    <aside class="side-pane">
+      {#if activeSpot}
+        <div class="spot-card">
+          <div class="card-header">
+            <div class="badge-group">
+              {#if distancePx !== null}
+                <span class="badge dist-badge">{distancePx}px</span>
+              {/if}
+              {#if cursorGeoDist !== null}
+                <span class="badge geo-badge">{formatDistance(cursorGeoDist)}</span>
+              {/if}
             </div>
-          {/if}
+          </div>
+
+          <div class="photo-wrapper">
+            <img src={activeSpot.photo} alt="Spot photo" class="spot-photo" />
+          </div>
+
+          <div class="spot-meta">
+            <div class="meta-row date-row">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              <span class="date-text">{activeSpot.date}</span>
+            </div>
+
+            <div class="meta-row coords-row">
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span class="coords-text">{activeSpot.lat.toFixed(4)}, {activeSpot.lng.toFixed(4)}</span>
+            </div>
+
+            {#if activeSpot.notes}
+              <div class="notes-box">
+                <p>{activeSpot.notes}</p>
+              </div>
+            {/if}
+          </div>
         </div>
-      </div>
-    {:else}
-      <div class="empty-state">
-        <p>地図上にカーソルを合わせると<br />最寄りのピンの写真が表示されます</p>
-      </div>
-    {/if}
-  </aside>
+      {:else}
+        <div class="empty-state">
+          <p>地図上にカーソルを合わせると<br />最寄りのピンの写真が表示されます</p>
+        </div>
+      {/if}
+    </aside>
+  </div>
 </div>
 
 <style>
-  .explorer-layout {
+  .app-container {
     display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
+    overflow: hidden;
+  }
+
+  .app-header {
+    padding: 0.5rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 2px solid var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: 48px;
+    box-sizing: border-box;
+    flex-shrink: 0;
+  }
+
+  .header-title {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .timeline-control {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-primary);
+    padding: 3px 10px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+  }
+
+  .timeline-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    min-width: 72px;
+    text-align: right;
+    font-family: -apple-system, BlinkMacSystemFont, monospace;
+  }
+
+  .simple-range {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 110px;
+    height: 3px;
+    background: var(--border-color);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .simple-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-secondary);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+
+  .simple-range::-webkit-slider-thumb:hover {
+    transform: scale(1.3);
+  }
+
+  .simple-range::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--bg-secondary);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    transition: transform 0.15s ease, background-color 0.15s ease;
+  }
+
+  .simple-range::-moz-range-thumb:hover {
+    transform: scale(1.3);
+  }
+
+  .explorer-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    min-height: 0;
     overflow: hidden;
     background: var(--bg-primary);
   }
@@ -472,4 +654,3 @@
     filter: var(--map-ctrl-icon-filter, none);
   }
 </style>
-
