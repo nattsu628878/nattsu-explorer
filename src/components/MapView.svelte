@@ -215,12 +215,6 @@
 <div class="explorer-layout">
   <div class="map-pane">
     <div class="map" bind:this={mapContainer}></div>
-    {#if activeSpot}
-      <div class="map-status-overlay">
-        <span class="pulse-icon"></span>
-        <span>最寄りピンに追従中</span>
-      </div>
-    {/if}
   </div>
 
   <aside class="side-pane">
@@ -228,7 +222,6 @@
       <div class="spot-card">
         <div class="card-header">
           <div class="badge-group">
-            <span class="badge active-badge">最寄りピン</span>
             {#if distancePx !== null}
               <span class="badge dist-badge">{distancePx}px</span>
             {/if}
@@ -236,21 +229,10 @@
               <span class="badge geo-badge">{formatDistance(cursorGeoDist)}</span>
             {/if}
           </div>
-          <button class="focus-btn" on:click={focusActiveSpot} title="ピンの位置へ移動">
-            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            ズーム
-          </button>
         </div>
 
-        <div class="photo-wrapper" on:click={focusActiveSpot}>
+        <div class="photo-wrapper">
           <img src={activeSpot.photo} alt="Spot photo" class="spot-photo" />
-          <div class="photo-overlay">
-            <span>クリックでピンへ移動</span>
-          </div>
         </div>
 
         <div class="spot-meta">
@@ -308,49 +290,6 @@
     height: 100%;
   }
 
-  .map-status-overlay {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--bg-panel);
-    color: var(--text-secondary);
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    pointer-events: none;
-  }
-
-  .pulse-icon {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--accent);
-    box-shadow: 0 0 0 0 rgba(98, 136, 120, 0.7);
-    animation: pulse-ring 2s infinite;
-  }
-
-  @keyframes pulse-ring {
-    0% {
-      transform: scale(0.95);
-      box-shadow: 0 0 0 0 rgba(98, 136, 120, 0.7);
-    }
-    70% {
-      transform: scale(1);
-      box-shadow: 0 0 0 6px rgba(98, 136, 120, 0);
-    }
-    100% {
-      transform: scale(0.95);
-      box-shadow: 0 0 0 0 rgba(98, 136, 120, 0);
-    }
-  }
-
   .side-pane {
     width: 360px;
     height: 100%;
@@ -373,7 +312,7 @@
   .card-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 0.5rem;
   }
 
@@ -391,11 +330,6 @@
     border-radius: 12px;
   }
 
-  .active-badge {
-    background: var(--accent);
-    color: #fff;
-  }
-
   .dist-badge {
     background: var(--bg-tertiary);
     color: var(--text-secondary);
@@ -406,33 +340,12 @@
     color: var(--accent);
   }
 
-  .focus-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-secondary);
-    padding: 4px 8px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .focus-btn:hover {
-    background: var(--accent-bg);
-    color: var(--accent);
-    border-color: var(--accent);
-  }
-
   .photo-wrapper {
     position: relative;
     width: 100%;
     border-radius: 8px;
     overflow: hidden;
     background: var(--bg-tertiary);
-    cursor: pointer;
     box-shadow: var(--shadow-sm);
   }
 
@@ -442,29 +355,6 @@
     max-height: 400px;
     object-fit: cover;
     display: block;
-    transition: transform 0.3s ease;
-  }
-
-  .photo-wrapper:hover .spot-photo {
-    transform: scale(1.02);
-  }
-
-  .photo-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 500;
-    opacity: 0;
-    transition: opacity 0.2s ease;
-  }
-
-  .photo-wrapper:hover .photo-overlay {
-    opacity: 1;
   }
 
   .spot-meta {
@@ -535,11 +425,11 @@
 
   :global(.spot-marker.is-active svg) {
     transform: scale(1.4) translateY(-4px);
-    filter: drop-shadow(0 4px 8px rgba(230, 57, 70, 0.6));
+    filter: drop-shadow(0 4px 8px rgba(114, 23, 33, 0.6));
   }
 
   :global(.spot-marker.is-active svg path) {
-    fill: #e63946 !important;
+    fill: #721721 !important;
   }
 
   /* ポップアップのグローバルスタイル */
