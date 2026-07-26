@@ -12,7 +12,6 @@
   let activeSpot = null;
   let distancePx = null;
   let mousePos = null;
-  let mapCenter = null;
 
   // ハーバーサイン公式による地球表面上の距離計算 (km)
   function getGeoDistanceKm(lat1, lon1, lat2, lon2) {
@@ -35,6 +34,17 @@
       return `${Math.round(distKm * 1000)} m`;
     }
     return `${distKm.toFixed(1)} km`;
+  }
+
+  function popupHtml(spot) {
+    const notes = spot.notes
+      ? `<p style="margin:0.25rem 0 0;font-size:0.85em;color:var(--text-secondary);">${spot.notes}</p>`
+      : '';
+    return `<div style="font-family:inherit;min-width:180px;">
+      <img src="${spot.photo}" alt="" style="width:100%;border-radius:4px;margin-bottom:0.5rem;display:block;" />
+      <div style="font-size:0.75em;color:var(--text-muted);">${spot.date}</div>
+      ${notes}
+    </div>`;
   }
 
   function updateNearestSpot(point) {
@@ -81,23 +91,18 @@
     if (spots.length === 0) return;
 
     for (const spot of spots) {
-      const el = document.createElement('div');
-      el.className = 'custom-marker';
-      el.innerHTML = `
-        <div class="marker-pulse"></div>
-        <div class="marker-dot"></div>
-      `;
+      const marker = new maplibregl.Marker({ color: '#628878' })
+        .setLngLat([spot.lng, spot.lat])
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(popupHtml(spot)))
+        .addTo(map);
 
-      el.addEventListener('click', (ev) => {
-        ev.stopPropagation();
+      const el = marker.getElement();
+      el.classList.add('spot-marker');
+
+      el.addEventListener('click', () => {
         activeSpot = spot;
         updateMarkerStyles();
-        map.flyTo({ center: [spot.lng, spot.lat], zoom: Math.max(map.getZoom(), 12), duration: 800 });
       });
-
-      const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
-        .setLngLat([spot.lng, spot.lat])
-        .addTo(map);
 
       markerMap.set(spot.slug, { marker, element: el });
     }
@@ -109,11 +114,12 @@
     map.fitBounds(bounds, { padding: 64, maxZoom: 15, duration: 0 });
 
     setTimeout(() => {
-      if (mapContainer) {
+      if (mapContainer && map) {
+        map.resize();
         const centerPoint = { x: mapContainer.clientWidth / 2, y: mapContainer.clientHeight / 2 };
         updateNearestSpot(centerPoint);
       }
-    }, 100);
+    }, 150);
   }
 
   function focusActiveSpot() {
@@ -135,7 +141,9 @@
     });
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
 
-    map.on('load', () => renderMarkers());
+    map.on('load', () => {
+      renderMarkers();
+    });
 
     map.on('mousemove', (e) => {
       mousePos = e.point;
@@ -150,7 +158,17 @@
       updateNearestSpot(targetPoint);
     });
 
-    return () => map.remove();
+    const resizeObserver = new ResizeObserver(() => {
+      if (map) map.resize();
+    });
+    if (mapContainer) {
+      resizeObserver.observe(mapContainer);
+    }
+
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+    };
   });
 
   $: cursorGeoDist = (activeSpot && mousePos && map)
@@ -169,7 +187,7 @@
     {#if activeSpot}
       <div class="map-status-overlay">
         <span class="pulse-icon"></span>
-        <span>追従中: カーソルから一番近いピン</span>
+        <span>最寄りピンに追従中</span>
       </div>
     {/if}
   </div>
@@ -200,7 +218,7 @@
         <div class="photo-wrapper" on:click={focusActiveSpot}>
           <img src={activeSpot.photo} alt="Spot photo" class="spot-photo" />
           <div class="photo-overlay">
-            <span>クリックで地図を移動</span>
+            <span>クリックでピンへ移動</span>
           </div>
         </div>
 
@@ -467,66 +485,47 @@
     font-size: 0.9rem;
   }
 
-  /* マーカーのカスタムスタイル */
-  :global(.custom-marker) {
-    position: relative;
-    width: 20px;
-    height: 20px;
+  /* MapLibre標準ピンのスタイルカスタム */
+  :global(.spot-marker) {
     cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
-  :global(.marker-dot) {
-    width: 14px;
-    height: 14px;
-    background-color: var(--accent);
-    border: 2px solid #ffffff;
-    border-radius: 50%;
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s;
+  :global(.spot-marker svg) {
+    transition: transform 0.2s ease, filter 0.2s ease;
   }
 
-  :global(.marker-pulse) {
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    border: 2px solid var(--accent);
-    opacity: 0;
-    transform: scale(0.5);
-    transition: all 0.3s ease;
+  :global(.spot-marker svg path) {
+    transition: fill 0.2s ease;
   }
 
-  :global(.custom-marker.is-active) {
+  :global(.spot-marker.is-active) {
     z-index: 10 !important;
   }
 
-  :global(.custom-marker.is-active .marker-dot) {
-    transform: scale(1.4);
-    background-color: #e63946;
-    border-color: #ffffff;
+  :global(.spot-marker.is-active svg) {
+    transform: scale(1.4) translateY(-4px);
+    filter: drop-shadow(0 4px 8px rgba(230, 57, 70, 0.6));
   }
 
-  :global(.custom-marker.is-active .marker-pulse) {
-    opacity: 0.8;
-    transform: scale(1.5);
-    border-color: #e63946;
-    animation: marker-pulse-anim 1.5s infinite;
+  :global(.spot-marker.is-active svg path) {
+    fill: #e63946 !important;
   }
 
-  @keyframes marker-pulse-anim {
-    0% {
-      transform: scale(1.2);
-      opacity: 0.8;
-    }
-    100% {
-      transform: scale(2.2);
-      opacity: 0;
-    }
+  /* ポップアップのグローバルスタイル */
+  :global(.maplibregl-popup-content) {
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-md);
+    border-radius: 6px;
+    padding: 10px;
   }
 
-  /* レスポンシブ対応: 画面幅が狭い場合は下部ペインに切り替え */
+  :global(.maplibregl-popup-anchor-bottom .maplibregl-popup-tip) {
+    border-top-color: var(--bg-panel);
+  }
+
+  /* レスポンシブ対応 */
   @media (max-width: 768px) {
     .explorer-layout {
       flex-direction: column;
