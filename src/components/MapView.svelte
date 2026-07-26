@@ -18,7 +18,7 @@
   let rafId = null;
   let isDraggingMap = false;
 
-  // 時系列ソート済みユニーク日付の生成
+  // Generate sorted unique date list
   $: sortedDates = Array.from(
     new Set(
       spots
@@ -41,17 +41,17 @@
 
   $: dateLabel = (() => {
     if (sortedDates.length === 0) return '';
-    if (sliderValue === 0) return '全期間';
-    if (sliderValue === maxSliderIndex) return `最新 (${sortedDates[maxSliderIndex]})`;
-    return `${sortedDates[sliderValue]} 以降`;
+    if (sliderValue === 0) return 'All';
+    if (sliderValue === maxSliderIndex) return 'Latest';
+    return `${sortedDates[sliderValue]}+`;
   })();
 
-  // filteredSpotsが変更されたらマーカーを同期
+  // Sync markers when filteredSpots changes
   $: if (map && filteredSpots) {
     syncMarkers();
   }
 
-  // ハーバーサイン公式による地球表面上の距離計算 (km)
+  // Haversine formula for geo distance calculation (km)
   function getGeoDistanceKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -136,7 +136,7 @@
 
     const filteredSlugs = new Set(filteredSpots.map((s) => s.slug));
 
-    // フィルタから外れたマーカーの削除
+    // Remove markers outside filter
     for (const [slug, { marker }] of markerMap.entries()) {
       if (!filteredSlugs.has(slug)) {
         marker.remove();
@@ -144,7 +144,7 @@
       }
     }
 
-    // 新規マーカーの追加
+    // Add new markers
     for (const spot of filteredSpots) {
       if (!markerMap.has(spot.slug)) {
         const marker = new maplibregl.Marker({ color: '#628878' })
@@ -165,7 +165,7 @@
       }
     }
 
-    // アクティブスポットが絞り込みで消えた場合、最寄りスポットを更新
+    // Reset active spot if filtered out
     if (activeSpot && !filteredSlugs.has(activeSpot.slug)) {
       activeSpot = null;
       prevActiveSlug = null;
@@ -344,7 +344,7 @@
         </div>
       {:else}
         <div class="empty-state">
-          <p>地図上にカーソルを合わせると<br />最寄りのピンの写真が表示されます</p>
+          <p>Hover over the map<br />to preview the nearest photo</p>
         </div>
       {/if}
     </aside>
