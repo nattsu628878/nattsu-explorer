@@ -147,15 +147,29 @@
 
     map.on('mousemove', (e) => {
       mousePos = e.point;
-      updateNearestSpot(e.point);
+      if (map && !map.isDragging()) {
+        updateNearestSpot(e.point);
+      }
     });
 
     map.on('move', () => {
-      const targetPoint = mousePos || {
-        x: mapContainer.clientWidth / 2,
-        y: mapContainer.clientHeight / 2
-      };
-      updateNearestSpot(targetPoint);
+      if (map && !map.isDragging()) {
+        const targetPoint = mousePos || {
+          x: mapContainer.clientWidth / 2,
+          y: mapContainer.clientHeight / 2
+        };
+        updateNearestSpot(targetPoint);
+      }
+    });
+
+    map.on('dragend', () => {
+      if (map) {
+        const targetPoint = mousePos || {
+          x: mapContainer.clientWidth / 2,
+          y: mapContainer.clientHeight / 2
+        };
+        updateNearestSpot(targetPoint);
+      }
     });
 
     const resizeObserver = new ResizeObserver(() => {
