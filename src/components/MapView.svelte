@@ -392,10 +392,6 @@
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    background: var(--bg-primary);
-    padding: 3px 10px;
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
   }
 
   .timeline-label {
