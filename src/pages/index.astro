@@ -1,7 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
 import MapView from '../components/MapView.svelte';
-import ThemeToggle from '../components/ThemeToggle.svelte';
 import '../styles/tokens.css';
 
 const entries = await getCollection('spots');
@@ -21,34 +20,12 @@ const spots = entries.map((e) => ({
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>nattsu-explorer</title>
-    <script is:inline>
-      (function () {
-        var saved = localStorage.getItem('theme');
-        if (saved) document.documentElement.setAttribute('data-theme', saved);
-      })();
-    </script>
     <style>
       html, body, #app {
         height: 100%;
       }
       body {
         margin: 0;
-      }
-      header.app-header {
-        padding: 0.6rem 1rem;
-        background: var(--bg-secondary);
-        border-bottom: 2px solid var(--accent);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-      }
-      header.app-header h1 {
-        margin: 0;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: var(--accent);
-        letter-spacing: 0.02em;
       }
       #app {
         height: 100vh;

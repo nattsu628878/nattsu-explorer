@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
-  import ThemeToggle from './ThemeToggle.svelte';
 
   /** @type {{ slug: string, lat: number, lng: number, date: string, photo: string, notes?: string }[]} */
   export let spots = [];
@@ -289,7 +288,6 @@
           />
         </div>
       {/if}
-      <ThemeToggle />
     </div>
   </header>
 
