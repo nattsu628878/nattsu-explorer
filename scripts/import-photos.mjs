@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 写真の取り込みスクリプト。
-// Google Drive共有フォルダ（nattsu-hub-share/to-agent/nattsu-explorer/）から写真を取得し、
+// Google Drive共有フォルダ（nattsu-hub/to-agent/nattsu-explorer/）から写真を取得し、
 // EXIF位置情報・撮影日時を読み、public/photos/ にwebp化して配置、
 // src/content/spots/ にコンテンツエントリを生成する。
 // 処理済みの元写真はDrive側のarchive/nattsu-explorer/へ退避する。
@@ -16,7 +16,7 @@ import { extname, join } from 'node:path';
 import exifr from 'exifr';
 const { parse: parseExif, gps: gpsExif } = exifr;
 
-const DRIVE_ROOT = 'gdrive:nattsu-hub-share';
+const DRIVE_ROOT = 'gdrive:nattsu-hub';
 const DRIVE_INBOX = `${DRIVE_ROOT}/to-agent/nattsu-explorer`;
 const DRIVE_ARCHIVE = `${DRIVE_ROOT}/archive/nattsu-explorer`;
 const CACHE_DIR = './.assets-cache/import-inbox';

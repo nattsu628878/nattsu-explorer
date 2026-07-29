@@ -35,9 +35,9 @@ notes: "メモ（任意）"
 
 ## 写真の取り込み
 
-写真はGoogle Driveの共有フォルダ（`nattsu-hub-share/to-agent/`）経由で渡す。
+写真はGoogle Driveの共有フォルダ（`nattsu-hub/to-agent/`）経由で渡す。
 
-1. GPS付き写真（HEICは事前に `sips`/`ffmpeg` 等でjpgに変換）を Google Drive の `nattsu-hub-share/to-agent/` に置く。
+1. GPS付き写真（HEICは事前に `sips`/`ffmpeg` 等でjpgに変換）を Google Drive の `nattsu-hub/to-agent/` に置く。
 2. 実行:
 
 ```bash
